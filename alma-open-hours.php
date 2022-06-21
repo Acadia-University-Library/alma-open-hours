@@ -27,9 +27,9 @@ date_timezone_set('UTC');
 
 // Alma config
 // Refer to https://developers.exlibrisgroup.com/alma/apis/docs/conf/R0VUIC9hbG1hd3MvdjEvY29uZi9saWJyYXJpZXMve2xpYnJhcnlDb2RlfS9vcGVuLWhvdXJz/
-$ALMA_API_BASEURL = 'https://api-ca.hosted.exlibrisgroup.com/almaws/v1/conf/libraries/';
-$ALMA_API_KEY = 'MY_API_KEY';
-$ALMA_API_LIBRARY_ID = 'MY_LIBRARAY_ID'; 
+$ALMA_API_BASEURL = '';
+$ALMA_API_KEY = '';
+$ALMA_API_LIBRARY_ID = ''; 
 $ALMA_API_QUERY_DAYS = 28; // API querying supports between 1 and 28 days
 $ALMA_API_QUERY_DAYS_MULTIPLE = 1; // Retrieve a multiple of API query days between 1 and 13
 
@@ -43,15 +43,29 @@ $TEST = true;
 $DUMP = true;
 
 // Override default configuration
-(include_once('alma-open-hours.config.php')) or die ('ERROR: Missing configuration file.');
+(include_once('alma-open-hours.config.php')) or die('FATAL ERROR: Missing configuration file.');
+
+// Config validation
+
+if(empty($ALMA_API_BASEURL) || empty($ALMA_API_KEY) || empty($ALMA_API_LIBRARY_ID)) {
+  die('FATAL ERROR: One, or more, of API base URL, key and library ID is missing from the configuration.');
+}
 
 $ALMA_API_URL = $ALMA_API_BASEURL . $ALMA_API_LIBRARY_ID . '/open-hours?apikey=' . $ALMA_API_KEY . '&format=json';
 
+$ALMA_API_QUERY_DAYS = round($ALMA_API_QUERY_DAYS);
 if($ALMA_API_QUERY_DAYS < 1) { $ALMA_API_QUERY_DAYS = 1; }
 else if($ALMA_API_QUERY_DAYS > 28) { $ALMA_API_QUERY_DAYS = 28; }
 
+$ALMA_API_QUERY_DAYS_MULTIPLE = round($ALMA_API_QUERY_DAYS_MULTIPLE);
 if($ALMA_API_QUERY_DAYS_MULTIPLE < 1) { $ALMA_API_QUERY_DAYS_MULTIPLE = 1; }
 else if($ALMA_API_QUERY_DAYS_MULTIPLE > 13) { $ALMA_API_QUERY_DAYS_MULTIPLE = 13; }
+
+if(!is_bool($TEST)) { $TEST = true; }
+
+if(!is_bool($DUMP)) { $DUMP = true; }
+
+if($TEST) { $DUMP = true; }
 
 $unixts_now = time();
 $xd = array();
@@ -172,7 +186,7 @@ if($TEST) {
 }
 // Otherwise, update the CMS database
 else {
-  (include_once('alma-open-hours.cms_import.php')) or die('ERROR: Missing CMS import script.');
+  (include_once('alma-open-hours.cms_import.php')) or die('FATAL ERROR: Missing CMS import script.');
 }
 
 
