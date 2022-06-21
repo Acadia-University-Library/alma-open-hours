@@ -43,7 +43,7 @@ $TEST = true;
 $DUMP = true;
 
 // Override default configuration
-(include_once('alma_hours.config.php')) or die ('ERROR: Missing configuration file.');
+(include_once('alma-open-hours.config.php')) or die ('ERROR: Missing configuration file.');
 
 $ALMA_API_URL = $ALMA_API_BASEURL . $ALMA_API_LIBRARY_ID . '/open-hours?apikey=' . $ALMA_API_KEY . '&format=json';
 
@@ -62,9 +62,9 @@ for($k = 0; $k < $ALMA_API_QUERY_DAYS_MULTIPLE; $k++) {
   $ymd_to = date('Y-m-d', ($unixts_now + $unixts_offset + ($ALMA_API_QUERY_DAYS * 86400) - 86400));
   $alma_api_url_hours_from_to = $ALMA_API_URL . '&from=' . $ymd_from . '&to=' . $ymd_to;
 
-  dump($alma_api_url_hours_from_to, 'Alma Hours API - URL for days ' . (1 + $k * $ALMA_API_QUERY_DAYS) . ' (' . $ymd_from . ') to ' . (($k + 1) * $ALMA_API_QUERY_DAYS) . ' (' . $ymd_to . ')');
+  dump($alma_api_url_hours_from_to, 'Alma Hours API - URL for days ' . ($k * $ALMA_API_QUERY_DAYS + 1) . ' (' . $ymd_from . ') to ' . (($k + 1) * $ALMA_API_QUERY_DAYS) . ' (' . $ymd_to . ')');
 
-  $f_cache = $ymd_to . '-hours.json'; 
+  $f_cache = 'cache/' . $ymd_to . '-hours.json'; 
   if(file_exists($f_cache)) {
     $x = file_get_contents($f_cache);
   }
@@ -172,7 +172,7 @@ if($TEST) {
 }
 // Otherwise, update the CMS database
 else {
-  (include_once('alma_hours.cms_import.php')) or die('ERROR: Missing CMS import script.');
+  (include_once('alma-open-hours.cms_import.php')) or die('ERROR: Missing CMS import script.');
 }
 
 
