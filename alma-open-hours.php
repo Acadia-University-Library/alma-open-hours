@@ -36,6 +36,9 @@ $ALMA_API_QUERY_DAYS_MULTIPLE = 1; // Retrieve a multiple of API query days betw
 // UTC to CMS server standard time offset
 $UTC_OFFSET_CMS_STANDARD_TIME = 0;
 
+// Format friendly open/close times in the final $hours array
+$DATE_TIME_FORMAT = 'Y-m-d H:i';
+
 // Test mode; if true, don't update CMS db
 $TEST = true;
 
@@ -122,7 +125,9 @@ for($k = 0; $k < count($xd); $k++) {
       'is_closed' => 0,
       'has_exceptions' => $j-1,
       'unixts_open_time' => $unixts_open, 
-      'unixts_close_time' => $unixts_closed 
+      'unixts_close_time' => $unixts_closed, 
+      'open_time' => date($DATE_TIME_FORMAT, $unixts_open),
+      'close_time' => date($DATE_TIME_FORMAT, $unixts_closed)
     );
   }
 }
@@ -140,7 +145,9 @@ for($t = $t_a; $t < $t_b; $t += (86400)) {
       'is_closed' => 1,
       'has_exceptions' => 0,
       'unixts_open_time' => $t,
-      'unixts_close_time' => $t + 86400
+      'unixts_close_time' => $t + 86400,
+      'open_time' => date($DATE_TIME_FORMAT, $t),
+      'close_time' => date($DATE_TIME_FORMAT, ($t + 86400))
     );
   }
 }
@@ -172,8 +179,9 @@ foreach($hours as $hKey => $hValue) {
       $hours[$hKey]['cms_unixts_close_time'] = $hValue['unixts_close_time'] + $utc_to_standard;
     }
   }
-  $hours[$hKey]['cms_open_time'] = date('D M j/y g:ia', $hours[$hKey]['cms_unixts_open_time']);
-  $hours[$hKey]['cms_close_time'] = date('D M j/y g:ia', $hours[$hKey]['cms_unixts_close_time']);
+  $hours[$hKey]['cms_open_time'] = date($DATE_TIME_FORMAT, $hours[$hKey]['cms_unixts_open_time']);
+  $hours[$hKey]['cms_close_time'] = date($DATE_TIME_FORMAT, $hours[$hKey]['cms_unixts_close_time']);
+  $hours[$hKey]['cms_utc_offset'] = $UTC_OFFSET_CMS_STANDARD_TIME;
 }
 
 

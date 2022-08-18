@@ -23,6 +23,8 @@ The following variables can be set in `alma-open-hours.config.php`:
 
 * `$UTC_OFFSET_CMS_STANDARD_TIME` = (float, default 0) Hours offset between UTC and your CMS server's local standard time. If your CMS calendar doesn't match the times that were originally entered into Alma, use this variable to make an adjustment accordingly.
 
+* `$DATE_TIME_FORMAT` = (string, default "Y-m-d H:i") Friendly format of date/time values contained in the `'open_time'`, `'close_time'`, `'cms_open_time'` and `'cms_close_time'` keys of the final `$hours` array.
+
 * `$TEST` = (boolean, default true) Enable testing mode where the Alma API is polled and data is prepared, but the contents of `alma-open-hours.cms_import.php` are not executed; therefore, your CMS database is not changed. Note: Turning on test mode also turns on data-dump mode, below.
 
 * `$DUMP` = (boolean, default true) Enable data-dump mode. Outputs the API query URL(s), raw JSON, prepared array of times, and status of each step in the data process.
@@ -40,32 +42,38 @@ Seriously though, you'll need to write your own CMS/database import code and pla
 Prepared data is stored in the `$hours` variable. If you run the open-hours utility in a web browser with the `$TEST` configuration variable set to `true`, you'll see a 2-dimensional associative array that looks something like this:
 
 ```
-[2022-06-30] => Array
+[2022-08-19] => Array
   (
-    [iso_date] => 2022-06-30
-    [day_of_year] => 180
+    [iso_date] => 2022-08-19
+    [day_of_year] => 230
     [is_closed] => 0
     [has_exceptions] => 0
-    [unixts_open_time] => 1656576000
-    [unixts_close_time] => 1656608400
-    [cms_unixts_open_time] => 1656576000
-    [cms_unixts_close_time] => 1656608400
-    [cms_open_time] => Thu Jun 30/22 8:00am
-    [cms_close_time] => Thu Jun 30/22 5:00pm
+    [unixts_open_time] => 1660896000
+    [unixts_close_time] => 1660928400
+    [open_time] => Fri Aug 19/22 8:00am
+    [close_time] => Fri Aug 19/22 5:00pm
+    [cms_unixts_open_time] => 1660906800
+    [cms_unixts_close_time] => 1660939200
+    [cms_open_time] => Fri Aug 19/22 11:00am
+    [cms_close_time] => Fri Aug 19/22 8:00pm
+    [cms_utc_offset] => 3
   )
 
-[2022-07-01] => Array
+[2022-08-20] => Array
   (
-    [iso_date] => 2022-07-01
-    [day_of_year] => 181
+    [iso_date] => 2022-08-20
+    [day_of_year] => 231
     [is_closed] => 1
     [has_exceptions] => 0
-    [unixts_open_time] => 1656633600
-    [unixts_close_time] => 1656720000
-    [cms_unixts_open_time] => 1656633600
-    [cms_unixts_close_time] => 1656720000
-    [cms_open_time] => Fri Jul 1/22 12:00am
-    [cms_close_time] => Sat Jul 2/22 12:00am
+    [unixts_open_time] => 1660953600
+    [unixts_close_time] => 1661040000
+    [open_time] => Sat Aug 20/22 12:00am
+    [close_time] => Sun Aug 21/22 12:00am
+    [cms_unixts_open_time] => 1660964400
+    [cms_unixts_close_time] => 1661050800
+    [cms_open_time] => Sat Aug 20/22 3:00am
+    [cms_close_time] => Sun Aug 21/22 3:00am
+    [cms_utc_offset] => 3
   )
 ```
 
@@ -80,10 +88,13 @@ Each array element of `$hours` is keyed to a basic ISO-formatted date which corr
   * `['has_exceptions']` = (integer, range 0+) If this date's open hours were comprised of a regular open/close time as well exceptions thereto, the value indicates how many time exceptions were set in Alma.
   * `['unixts_open_time']` = (UNIX timestamp) UTC opening time retrieved from the API query.
   * `['unixts_close_time']` = (UNIX timestamp) UTC closing time retrieved from the API query.
+  * `['open_time']` = (date, format per config `$DATE_TIME_FORMAT`) Friendly version of `['unixts_open_time']` for reference purposes.
+  * `['close_time']` = (date, format per config `$DATE_TIME_FORMAT`) Friendly version of `['unixts_close_time']` for reference purposes.
   * `['cms_unixts_open_time']` = (UNIX timestamp) Opening time with the server's local offset applied, per optional configuration variable `$UTC_OFFSET_CMS_STANDARD_TIME`.
   * `['cms_unixts_close_time']` = (UNIX timestamp) Closing time with the server's local offset applied, per optional configuration variable `$UTC_OFFSET_CMS_STANDARD_TIME`.
-  * `['cms_open_time']` = (date, format "D M j/y g:ia") Friendly version of `['cms_unixts_open_time']` for reference purposes.
-  * `['cms_close_time']` = (date, format "D M j/y g:ia") Friendly version of `['cms_unixts_close_time']` for reference purposes.
+  * `['cms_open_time']` = (date, format per config `$DATE_TIME_FORMAT`) Friendly version of `['cms_unixts_open_time']` for reference purposes.
+  * `['cms_close_time']` = (date, format per config `$DATE_TIME_FORMAT`) Friendly version of `['cms_unixts_close_time']` for reference purposes.
+  * `['cms_utc_offset']` = (float) Copy of config `$UTC_OFFSET_CMS_STANDARD_TIME` for reference purposes.
   
 ## License
 

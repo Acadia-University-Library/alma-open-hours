@@ -33,6 +33,9 @@ $ALMA_API_QUERY_DAYS_MULTIPLE = 1; // Retrieve a multiple of API query days betw
 // UTC to CMS server standard time offset
 $UTC_OFFSET_CMS_STANDARD_TIME = 0;
 
+// Format friendly open/close times in the final $hours array
+$DATE_TIME_FORMAT = 'D M j/y g:ia';
+
 // Test mode; if true, don't update CMS db
 $TEST = true;
 
