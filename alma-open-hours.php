@@ -70,18 +70,26 @@ if(!is_bool($DUMP)) { $DUMP = true; }
 
 if($TEST) { $DUMP = true; }
 
+define('SECONDS_IN_A_DAY', 86400);
+
 $unixts_now = time();
 $xd = array();
 
 for($k = 0; $k < $ALMA_API_QUERY_DAYS_MULTIPLE; $k++) {
-  $unixts_offset = ($k * $ALMA_API_QUERY_DAYS * 86400);
-  $ymd_from = date('Y-m-d', $unixts_now + $unixts_offset);
-  $ymd_to = date('Y-m-d', ($unixts_now + $unixts_offset + ($ALMA_API_QUERY_DAYS * 86400) - 86400));
+  $unixts_offset = ($k * $ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY);
+  $ymd_from = date('Y-m-d', $unixts_now + $unixts_offset - SECONDS_IN_A_DAY);
+  $ymd_to = date('Y-m-d', $unixts_now + $unixts_offset + ($ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY));
   $alma_api_url_hours_from_to = $ALMA_API_URL . '&from=' . $ymd_from . '&to=' . $ymd_to;
 
-  dump($alma_api_url_hours_from_to, 'Alma Hours API - URL for days ' . ($k * $ALMA_API_QUERY_DAYS + 1) . ' (' . $ymd_from . ') to ' . (($k + 1) * $ALMA_API_QUERY_DAYS) . ' (' . $ymd_to . ')');
+  dump(
+    $alma_api_url_hours_from_to, 
+    'Alma Hours API - URL for days ' 
+    . ($k * $ALMA_API_QUERY_DAYS + 1) . ' (' . date('M j/y', $unixts_now + $unixts_offset) . ')'
+    . ' to ' 
+    . (($k + 1) * $ALMA_API_QUERY_DAYS) . ' (' . date('M j/y', $unixts_now + $unixts_offset + ($ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY) - SECONDS_IN_A_DAY) . ')'
+  );
 
-  $f_cache = 'cache/' . $ymd_to . '-hours.json'; 
+  $f_cache = 'cache/' . $ymd_from . '-to-' . $ymd_to . '-hours.json'; 
   if(file_exists($f_cache)) {
     $x = file_get_contents($f_cache);
   }
@@ -91,14 +99,12 @@ for($k = 0; $k < $ALMA_API_QUERY_DAYS_MULTIPLE; $k++) {
   }
 
   $x = json_decode($x);
-  $xd = array_merge($xd, $x->day);
+  $xd = array_merge($xd, array_slice($x->day, 1, $ALMA_API_QUERY_DAYS, true));
 }
 
 dump($xd, 'Alma Hours API - Raw Data');
 
 $hours = array();
-
-//$ALMA_ADD_EXCEPTIONS = false;
 
 // Convert raw API data to a format that's more conducive to later CMS import
 for($k = 0; $k < count($xd); $k++) {
@@ -117,7 +123,7 @@ for($k = 0; $k < count($xd); $k++) {
   $iso_date = str_replace('Z', '', $xd[$k]->date);
   if($unixts_open > 0 && $unixts_closed > 0) {
     if($unixts_closed < $unixts_open) {
-      $unixts_closed = $unixts_closed + 86400;
+      $unixts_closed = $unixts_closed + SECONDS_IN_A_DAY;
     }
     $hours[$iso_date] = array(
       'iso_date' => $iso_date,
@@ -135,19 +141,21 @@ ksort($hours);
 
 // Fill in closed dates
 $t_a = unixts_time_to_date($unixts_now);
-$t_b = $t_a + ($ALMA_API_QUERY_DAYS * $ALMA_API_QUERY_DAYS_MULTIPLE * 86400);
-for($t = $t_a; $t < $t_b; $t += (86400)) {
+$t_b = $t_a + ($ALMA_API_QUERY_DAYS * $ALMA_API_QUERY_DAYS_MULTIPLE * SECONDS_IN_A_DAY);
+for($t = $t_a; $t < $t_b; $t += (SECONDS_IN_A_DAY)) {
   $i = date('Y-m-d', $t);
-  if(!array_key_exists($i, $hours)) {
+  if(!array_key_exists($i, $hours) 
+    && $i >= date('Y-m-d', $unixts_now)
+    && $i <= date('Y-m-d', $unixts_now + ($ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY))) {
     $hours[$i] = array(
       'iso_date' => $i,
       'day_of_year' => date('z', $t),
       'is_closed' => 1,
       'has_exceptions' => 0,
       'unixts_open_time' => $t,
-      'unixts_close_time' => $t + 86400,
+      'unixts_close_time' => $t + SECONDS_IN_A_DAY,
       'open_time' => date($DATE_TIME_FORMAT, $t),
-      'close_time' => date($DATE_TIME_FORMAT, ($t + 86400))
+      'close_time' => date($DATE_TIME_FORMAT, ($t + SECONDS_IN_A_DAY))
     );
   }
 }
