@@ -3,7 +3,7 @@
 
 Utility to retrieve library hours of operation from Ex Libris Alma web API.
 
-Copyright (C) 2022  Vaughan Memorial Library, Acadia University
+Copyright (C) 2023  Vaughan Memorial Library, Acadia University
                     https://library.acadiau.ca, library-systems@acadiau.ca
 
 ********************************************************************************
@@ -22,6 +22,9 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 
 *******************************************************************************/
 
+// Local timezone
+date_default_timezone_set('America/Halifax');
+
 // Alma config
 // Refer to https://developers.exlibrisgroup.com/alma/apis/docs/conf/R0VUIC9hbG1hd3MvdjEvY29uZi9saWJyYXJpZXMve2xpYnJhcnlDb2RlfS9vcGVuLWhvdXJz/
 $ALMA_API_BASEURL = '';
@@ -30,11 +33,8 @@ $ALMA_API_LIBRARY_ID = '';
 $ALMA_API_QUERY_DAYS = 28; // API querying supports between 1 and 28 days
 $ALMA_API_QUERY_DAYS_MULTIPLE = 1; // Retrieve a multiple of API query days between 1 and 13
 
-// UTC to CMS server standard time offset
-$UTC_OFFSET_CMS_STANDARD_TIME = 0;
-
 // Format friendly open/close times in the final $hours array
-$DATE_TIME_FORMAT = 'D M j/y g:ia';
+$DATE_TIME_FORMAT = 'D M j/y g:i:sa';
 
 // Test mode; if true, don't update CMS db
 $TEST = true;

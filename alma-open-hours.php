@@ -3,7 +3,7 @@
 
 Utility to retrieve library hours of operation from Ex Libris Alma web API.
 
-Copyright (C) 2022  Vaughan Memorial Library, Acadia University
+Copyright (C) 2023  Vaughan Memorial Library, Acadia University
                     https://library.acadiau.ca, library-systems@acadiau.ca
 
 ********************************************************************************
@@ -22,8 +22,8 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 
 *******************************************************************************/
 
-// PHP config
-date_timezone_set('UTC');
+// PHP config: UTC as default timezone if not overidden in local config file
+date_default_timezone_set('UTC');
 
 // Alma config
 // Refer to https://developers.exlibrisgroup.com/alma/apis/docs/conf/R0VUIC9hbG1hd3MvdjEvY29uZi9saWJyYXJpZXMve2xpYnJhcnlDb2RlfS9vcGVuLWhvdXJz/
@@ -32,9 +32,6 @@ $ALMA_API_KEY = '';
 $ALMA_API_LIBRARY_ID = ''; 
 $ALMA_API_QUERY_DAYS = 28; // API querying supports between 1 and 28 days
 $ALMA_API_QUERY_DAYS_MULTIPLE = 1; // Retrieve a multiple of API query days between 1 and 13
-
-// UTC to CMS server standard time offset
-$UTC_OFFSET_CMS_STANDARD_TIME = 0;
 
 // Format friendly open/close times in the final $hours array
 $DATE_TIME_FORMAT = 'Y-m-d H:i';
@@ -72,21 +69,21 @@ if($TEST) { $DUMP = true; }
 
 define('SECONDS_IN_A_DAY', 86400);
 
-$unixts_now = time();
-$xd = array();
+$now_ts = time();
+$raw = array();
 
 for($k = 0; $k < $ALMA_API_QUERY_DAYS_MULTIPLE; $k++) {
-  $unixts_offset = ($k * $ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY);
-  $ymd_from = date('Y-m-d', $unixts_now + $unixts_offset - SECONDS_IN_A_DAY);
-  $ymd_to = date('Y-m-d', $unixts_now + $unixts_offset + ($ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY));
+  $offset_ts = ($k * $ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY);
+  $ymd_from = date('Y-m-d', $now_ts + $offset_ts - SECONDS_IN_A_DAY);
+  $ymd_to = date('Y-m-d', $now_ts + $offset_ts + ($ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY));
   $alma_api_url_hours_from_to = $ALMA_API_URL . '&from=' . $ymd_from . '&to=' . $ymd_to;
 
   dump(
     $alma_api_url_hours_from_to, 
     'Alma Hours API - URL for days ' 
-    . ($k * $ALMA_API_QUERY_DAYS + 1) . ' (' . date('M j/y', $unixts_now + $unixts_offset) . ')'
+    . ($k * $ALMA_API_QUERY_DAYS + 1) . ' (' . date('M j/y', $now_ts + $offset_ts) . ')'
     . ' to ' 
-    . (($k + 1) * $ALMA_API_QUERY_DAYS) . ' (' . date('M j/y', $unixts_now + $unixts_offset + ($ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY) - SECONDS_IN_A_DAY) . ')'
+    . (($k + 1) * $ALMA_API_QUERY_DAYS) . ' (' . date('M j/y', $now_ts + $offset_ts + ($ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY) - SECONDS_IN_A_DAY) . ')'
   );
 
   $f_cache = 'cache/' . $ymd_from . '-to-' . $ymd_to . '-hours.json'; 
@@ -99,99 +96,59 @@ for($k = 0; $k < $ALMA_API_QUERY_DAYS_MULTIPLE; $k++) {
   }
 
   $x = json_decode($x);
-  $xd = array_merge($xd, array_slice($x->day, 1, $ALMA_API_QUERY_DAYS, true));
+  $raw = array_merge($raw, array_slice($x->day, 1, $ALMA_API_QUERY_DAYS, true));
 }
 
-dump($xd, 'Alma Hours API - Raw Data');
+dump($raw, 'Alma Hours API - Raw Data');
 
 $hours = array();
 
-// Convert raw API data to a format that's more conducive to later CMS import
-for($k = 0; $k < count($xd); $k++) {
-  $unixts_open = 0;
-  $unixts_closed = 0;
-  for($j = 0; $j < count($xd[$k]->hour); $j++) {
-    $unixts_open_excep = date_time_to_unixts($xd[$k]->date, $xd[$k]->hour[$j]->from);
-    if($unixts_open == 0 || $unixts_open_excep < $unixts_open) {
-      $unixts_open = $unixts_open_excep;
-    }
-    $unixts_closed_excep = date_time_to_unixts($xd[$k]->date, $xd[$k]->hour[$j]->to);
-    if($unixts_closed == 0 || $unixts_closed_excep > $unixts_closed) {
-      $unixts_closed = $unixts_closed_excep;
-    }
-  }
-  $iso_date = str_replace('Z', '', $xd[$k]->date);
-  if($unixts_open > 0 && $unixts_closed > 0) {
-    if($unixts_closed < $unixts_open) {
-      $unixts_closed = $unixts_closed + SECONDS_IN_A_DAY;
-    }
-    $hours[$iso_date] = array(
-      'iso_date' => $iso_date,
-      'day_of_year' => date('z', $unixts_open),
-      'is_closed' => 0,
-      'has_exceptions' => $j-1,
-      'unixts_open_time' => $unixts_open, 
-      'unixts_close_time' => $unixts_closed, 
-      'open_time' => date($DATE_TIME_FORMAT, $unixts_open),
-      'close_time' => date($DATE_TIME_FORMAT, $unixts_closed)
-    );
-  }
-}
-ksort($hours);
-
-// Fill in closed dates
-$t_a = unixts_time_to_date($unixts_now);
-$t_b = $t_a + ($ALMA_API_QUERY_DAYS * $ALMA_API_QUERY_DAYS_MULTIPLE * SECONDS_IN_A_DAY);
-for($t = $t_a; $t < $t_b; $t += (SECONDS_IN_A_DAY)) {
-  $i = date('Y-m-d', $t);
-  if(!array_key_exists($i, $hours) 
-    && $i >= date('Y-m-d', $unixts_now)
-    && $i <= date('Y-m-d', $unixts_now + ($ALMA_API_QUERY_DAYS * SECONDS_IN_A_DAY))) {
-    $hours[$i] = array(
-      'iso_date' => $i,
-      'day_of_year' => date('z', $t),
+for($k = 0; $k < count($raw); $k++) {
+  $date = str_replace('Z', '', $raw[$k]->date);
+  $date_ts = strtotime($date);
+  // Closed
+  if(empty($raw[$k]->hour)) {
+    $hours[$date] = array(
+      'date' => $date,
       'is_closed' => 1,
       'has_exceptions' => 0,
-      'unixts_open_time' => $t,
-      'unixts_close_time' => $t + SECONDS_IN_A_DAY,
-      'open_time' => date($DATE_TIME_FORMAT, $t),
-      'close_time' => date($DATE_TIME_FORMAT, ($t + SECONDS_IN_A_DAY))
+      'open_ts' => $date_ts,
+      'close_ts' => $date_ts + SECONDS_IN_A_DAY - 1,
+      'open_dt' => date($DATE_TIME_FORMAT, $date_ts),
+      'close_dt' => date($DATE_TIME_FORMAT, $date_ts + SECONDS_IN_A_DAY - 1)
     );
+  }
+  // Open
+  else {
+    $open_ts = 0;
+    $close_ts = 0;
+    for($j = 0; $j < count($raw[$k]->hour); $j++) {
+      $open_ts_excep = date_time_to_unixts($raw[$k]->date, $raw[$k]->hour[$j]->from);
+      if($open_ts == 0 || $open_ts_excep < $open_ts) {
+        $open_ts = $open_ts_excep;
+      }
+      $close_ts_excep = date_time_to_unixts($raw[$k]->date, $raw[$k]->hour[$j]->to);
+      if($close_ts == 0 || $close_ts_excep > $close_ts) {
+        $close_ts = $close_ts_excep;
+      }
+    }
+    if($open_ts > 0 && $close_ts > 0) {
+      if($close_ts < $open_ts) { // After midnight, advance one day
+        $close_ts = $close_ts + SECONDS_IN_A_DAY;
+      }
+      $hours[$date] = array(
+        'date' => $date,
+        'is_closed' => 0,
+        'has_exceptions' => $j-1,
+        'open_ts' => $open_ts, 
+        'close_ts' => $close_ts, 
+        'open_dt' => date($DATE_TIME_FORMAT, $open_ts),
+        'close_dt' => date($DATE_TIME_FORMAT, $close_ts)
+      );
+    }
   }
 }
 ksort($hours);
-
-// Adjust UTC to account for local CMS standard and daylight-saving times.
-$daylight_this_year = strtotime('Second Sunday Of March this year');
-$standard_this_year = strtotime('First Sunday Of November this year');
-$daylight_next_year = strtotime('Second Sunday Of March next year');
-$standard_next_year = strtotime('First Sunday Of November next year');
-$utc_to_daylight = ($UTC_OFFSET_CMS_STANDARD_TIME - 1) * 3600;
-$utc_to_standard = $UTC_OFFSET_CMS_STANDARD_TIME * 3600;
-foreach($hours as $hKey => $hValue) {
-  if($UTC_OFFSET_CMS_STANDARD_TIME == 0) {
-    $hours[$hKey]['cms_unixts_open_time'] = $hValue['unixts_open_time'];
-    $hours[$hKey]['cms_unixts_close_time'] = $hValue['unixts_close_time'];
-  }
-  else {
-    $isots = strtotime($hValue['date']);
-    // Daylight savings time
-    if(($isots >= $daylight_this_year && $isots < $standard_this_year) ||
-       ($isots >= $daylight_next_year && $isots < $standard_next_year)) {
-      $hours[$hKey]['cms_unixts_open_time'] = $hValue['unixts_open_time'] + $utc_to_daylight;
-      $hours[$hKey]['cms_unixts_close_time'] = $hValue['unixts_close_time'] + $utc_to_daylight;
-    }
-    // Standard time
-    else {
-      $hours[$hKey]['cms_unixts_open_time'] = $hValue['unixts_open_time'] + $utc_to_standard;
-      $hours[$hKey]['cms_unixts_close_time'] = $hValue['unixts_close_time'] + $utc_to_standard;
-    }
-  }
-  $hours[$hKey]['cms_open_time'] = date($DATE_TIME_FORMAT, $hours[$hKey]['cms_unixts_open_time']);
-  $hours[$hKey]['cms_close_time'] = date($DATE_TIME_FORMAT, $hours[$hKey]['cms_unixts_close_time']);
-  $hours[$hKey]['cms_utc_offset'] = $UTC_OFFSET_CMS_STANDARD_TIME;
-}
-
 
 dump($hours, 'Alma Hours - ' . count($hours) . ' days ready for CMS import');
 

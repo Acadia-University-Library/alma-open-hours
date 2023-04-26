@@ -3,7 +3,7 @@
 
 Utility to retrieve library hours of operation from Ex Libris Alma web API.
 
-Copyright (C) 2022  Vaughan Memorial Library, Acadia University
+Copyright (C) 2023  Vaughan Memorial Library, Acadia University
                     https://library.acadiau.ca, library-systems@acadiau.ca
 
 ********************************************************************************

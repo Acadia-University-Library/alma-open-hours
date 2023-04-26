@@ -9,7 +9,7 @@ The following variables can be set in `alma-open-hours.config.php`:
 
 ### Required
 
-* `$ALMA_API_BASEURL` = (string) Base API URL of your Alma instance. (e.g.  `https://api-ca.hosted.exlibrisgroup.com/almaws/v1/conf/libraries/`)
+* `$ALMA_API_BASEURL` = (string) Base API URL of your Alma instance. (e.g. `https://api-ca.hosted.exlibrisgroup.com/almaws/v1/conf/libraries/`)
 
 * `$ALMA_API_KEY` = (string) Your Alma API key.
 
@@ -17,17 +17,17 @@ The following variables can be set in `alma-open-hours.config.php`:
 
 ### Optional
 
+* `date_default_timezone_set('local_timezone')` = (string, default "UTC") Your local timezone. Refer to [PHP's documentation](https://www.php.net/manual/en/function.date-default-timezone-set.php) for more information about this function.
+
 * `$ALMA_API_QUERY_DAYS` = (integer, range 1-28, default 28) Number of days into the future for which you would like to retrieve data.
 
 * `$ALMA_API_QUERY_DAYS_MULTIPLE` = (integer, range 1-13, default 1) Number of times to execute the query operation. Setting this value greater than 1 allows you to retrieve more than 28 days of data; to a maximum of 364 days.
 
-* `$UTC_OFFSET_CMS_STANDARD_TIME` = (float, default 0) Hours offset between UTC and your CMS server's local standard time. If your CMS calendar doesn't match the times that were originally entered into Alma, use this variable to make an adjustment accordingly.
-
-* `$DATE_TIME_FORMAT` = (string, default "Y-m-d H:i") Friendly format of date/time values contained in the `'open_time'`, `'close_time'`, `'cms_open_time'` and `'cms_close_time'` keys of the final `$hours` array.
+* `$DATE_TIME_FORMAT` = (string, default "Y-m-d H:i") Friendly format of date/time values contained in the `'open_dt'` and `'close_dt'` keys of the final `$hours` array.
 
 * `$TEST` = (boolean, default true) Enable testing mode where the Alma API is polled and data is prepared, but the contents of `alma-open-hours.cms_import.php` are not executed; therefore, your CMS database is not changed. Note: Turning on test mode also turns on data-dump mode, below.
 
-* `$DUMP` = (boolean, default true) Enable data-dump mode. Outputs the API query URL(s), raw JSON, prepared array of times, and status of each step in the data process.
+* `$DUMP` = (boolean, default true) Enable data-dump mode. Outputs the API query URL(s), raw JSON, prepared array of hours, and statuses of each step in the data process.
 
 ### Caching
 
@@ -39,69 +39,54 @@ Do it yourself! :)
 
 Seriously though, you'll need to write your own CMS/database import code and place it in `alma-open-hours.cms_import.php`.
 
-Prepared data is stored in the `$hours` variable. If you run the open-hours utility in a web browser with the `$TEST` configuration variable set to `true`, you'll see a 2-dimensional associative array that looks something like this:
+Prepared data is stored in the `$hours` variable. If you run the open-hours utility in a web browser with the `$TEST` and `$DUMP` configuration variables set to `true`, you'll see a 2-dimensional associative array that looks something like this:
 
 ```
-[2022-08-19] => Array
+[2023-04-28] => Array
   (
-    [iso_date] => 2022-08-19
-    [day_of_year] => 230
+    [date] => 2023-04-28
     [is_closed] => 0
     [has_exceptions] => 0
-    [unixts_open_time] => 1660896000
-    [unixts_close_time] => 1660928400
-    [open_time] => Fri Aug 19/22 8:00am
-    [close_time] => Fri Aug 19/22 5:00pm
-    [cms_unixts_open_time] => 1660906800
-    [cms_unixts_close_time] => 1660939200
-    [cms_open_time] => Fri Aug 19/22 11:00am
-    [cms_close_time] => Fri Aug 19/22 8:00pm
-    [cms_utc_offset] => 3
+    [open_ts] => 1682679600
+    [close_ts] => 1682712000
+    [open_dt] => 2023-04-28 08:00
+    [close_dt] => 2023-04-28 17:00
   )
-
-[2022-08-20] => Array
+[2023-04-29] => Array
   (
-    [iso_date] => 2022-08-20
-    [day_of_year] => 231
+    [date] => 2023-04-29
     [is_closed] => 1
     [has_exceptions] => 0
-    [unixts_open_time] => 1660953600
-    [unixts_close_time] => 1661040000
-    [open_time] => Sat Aug 20/22 12:00am
-    [close_time] => Sun Aug 21/22 12:00am
-    [cms_unixts_open_time] => 1660964400
-    [cms_unixts_close_time] => 1661050800
-    [cms_open_time] => Sat Aug 20/22 3:00am
-    [cms_close_time] => Sun Aug 21/22 3:00am
-    [cms_utc_offset] => 3
+    [open_ts] => 1682737200
+    [close_ts] => 1682823599
+    [open_dt] => 2023-04-29 00:00
+    [close_dt] => 2023-04-29 23:59
   )
 ```
 
 ### Using the `$hours` Array
 
-Each array element of `$hours` is keyed to a basic ISO-formatted date which corresponds to the calendar date for a given range of open (and closed) hours. Further, stored within each element of `$hours` is a child array which, itself, contains an assortment of potentially useful data elements for populating your own CMS' database.
+Each array element of `$hours` is keyed to a basic ISO-formatted date which corresponds to the calendar date for a given range of open (and closed) hours. Further, stored within each element of `$hours` is a child array which, itself, contains an assortment of potentially useful data elements for populating your own CMS database.
 
 * `$hours['yyyy-mm-dd']` = (array)
-  * `['iso_date']` = (date, format "Y-m-d")
-  * `['day_of_year']` = (date, format "z") Ordinal date within the parent element's year.
+  * `['date']` = (date, format "yyyy-mm-dd")
   * `['is_closed']` = (integer, range 0-1) Numeric boolean representation of whether the library is closed (`1`) or open (`0`) on this date.
-  * `['has_exceptions']` = (integer, range 0+) If this date's open hours were comprised of a regular open/close time as well exceptions thereto, the value indicates how many time exceptions were set in Alma.
-  * `['unixts_open_time']` = (UNIX timestamp) UTC opening time retrieved from the API query.
-  * `['unixts_close_time']` = (UNIX timestamp) UTC closing time retrieved from the API query.
-  * `['open_time']` = (date, format per config `$DATE_TIME_FORMAT`) Friendly version of `['unixts_open_time']` for reference purposes.
-  * `['close_time']` = (date, format per config `$DATE_TIME_FORMAT`) Friendly version of `['unixts_close_time']` for reference purposes.
-  * `['cms_unixts_open_time']` = (UNIX timestamp) Opening time with the server's local offset applied, per optional configuration variable `$UTC_OFFSET_CMS_STANDARD_TIME`.
-  * `['cms_unixts_close_time']` = (UNIX timestamp) Closing time with the server's local offset applied, per optional configuration variable `$UTC_OFFSET_CMS_STANDARD_TIME`.
-  * `['cms_open_time']` = (date, format per config `$DATE_TIME_FORMAT`) Friendly version of `['cms_unixts_open_time']` for reference purposes.
-  * `['cms_close_time']` = (date, format per config `$DATE_TIME_FORMAT`) Friendly version of `['cms_unixts_close_time']` for reference purposes.
-  * `['cms_utc_offset']` = (float) Copy of config `$UTC_OFFSET_CMS_STANDARD_TIME` for reference purposes.
-  
+  * `['has_exceptions']` = (integer, range 0+) If this date's open hours are comprised of a regular open/close time as well exceptions thereto, the value indicates how many time exceptions were set in Alma.
+  * `['open_ts']` = (UNIX timestamp) Opening time retrieved from the API query. Note: If `['is_closed']` is `1`, then the "opening" time defaults to `00:00:00` (on `['date']`).
+  * `['close_ts']` = (UNIX timestamp) Closing time retrieved from the API query. Note: If `['is_closed']` is `1`, then the "closing" time defaults to `23:59:59` (on `['date']`).
+  * `['open_dt']` = (datetime, format per config `$DATE_TIME_FORMAT`) Human-readable version of `['open_dt']`.
+  * `['close_dt']` = (datetime, format per config `$DATE_TIME_FORMAT`) Human-readable version of `['close_dt']`.
+
 ## License
 
 This utility is licensed under the GNU Public License (GPL) version 3. Refer to [`LICENSE.md`](LICENSE.md) for the complete text.
 
+## Source Code
+
+This utility's PHP source code is hosted on [GitHub](https://github.com) @ https://github.com/Acadia-University-Library/alma-open-hours.
+
 ## Copyright & Contact
 
-Copyright (C) 2022  Vaughan Memorial Library, Acadia University
+Copyright (C) 2023  Vaughan Memorial Library, Acadia University
 * https://library.acadiau.ca
 * library-systems@acadiau.ca
