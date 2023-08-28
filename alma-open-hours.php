@@ -33,6 +33,9 @@ $ALMA_API_LIBRARY_ID = '';
 $ALMA_API_QUERY_DAYS = 28; // API querying supports between 1 and 28 days
 $ALMA_API_QUERY_DAYS_MULTIPLE = 1; // Retrieve a multiple of API query days between 1 and 13
 
+// Number of hours after which cached API query data will expire; "0" disables cache
+$CACHE_EXPIRY_HOURS = 48;
+
 // Format friendly open/close times in the final $hours array
 $DATE_TIME_FORMAT = 'Y-m-d H:i';
 
@@ -87,7 +90,7 @@ for($k = 0; $k < $ALMA_API_QUERY_DAYS_MULTIPLE; $k++) {
   );
 
   $f_cache = 'cache/' . $ymd_from . '-to-' . $ymd_to . '-hours.json'; 
-  if(file_exists($f_cache)) {
+  if(file_exists($f_cache) && (filemtime($f_cache) > ($now_ts - ($CACHE_EXPIRY_HOURS * 60 * 60)))) {
     $x = file_get_contents($f_cache);
   }
   else {

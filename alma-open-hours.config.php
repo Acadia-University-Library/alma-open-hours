@@ -33,6 +33,9 @@ $ALMA_API_LIBRARY_ID = '';
 $ALMA_API_QUERY_DAYS = 28; // API querying supports between 1 and 28 days
 $ALMA_API_QUERY_DAYS_MULTIPLE = 1; // Retrieve a multiple of API query days between 1 and 13
 
+// Number of hours after which cached API query data will expire; "0" disables cache
+$CACHE_EXPIRY_HOURS = 48;
+
 // Format friendly open/close times in the final $hours array
 $DATE_TIME_FORMAT = 'D M j/y g:i:sa';
 
